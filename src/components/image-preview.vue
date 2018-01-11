@@ -1,0 +1,276 @@
+<template>
+  <div class="image-preview" v-show="isImageShow" @click="hideImgPre">
+    <div class="items" v-bind:style="styleObject" v-bind:class="{animate:isAnimate}">
+      <div v-for="(item, index) in imgsList" v-bind:class="{min:scaleList[index] < 1}">
+        <img v-bind:class="{'image-item':true}"
+             v-bind:title="index"
+             v-bind:src="item"
+             v-bind:style="{width:scaleList[index]*10 + 'rem','margin-top':marginTopList[index]+'rem'}"
+        />
+      </div>
+    </div>
+    <div class="icons">
+      <div class="iconBox">
+        <div v-for="(item, index) in imgsList" v-bind:class="{circle:true, current:curIndex==index}"></div>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+  import { slider } from './../assets/js/slider.js';
+  export default {
+    template: '.image-preview',
+    data: function () {
+      return {
+        styleObject: {
+          marginLeft: '0rem'
+        },
+        curIndex: 0,
+        isAnimate: true,
+        isImageShow: false,
+        tempLeft: 0,
+        isStart: true,
+        scaleList: [],
+        marginTopList: [],
+        basicScale: 1,
+        tempTop: 0,
+        phoneType: 0,
+        phoneScale: 1
+      };
+    },
+    props: {
+      imgsList: Array,
+      initIndex: {
+        type: Number,
+        default: 0
+      }
+    },
+    watch: {
+      imgsList: function () {
+        for (let i = 0; i < this.imgsList.length; i++) {
+          this.$set(this.scaleList, i, 1);
+          this.$set(this.marginTopList, i, 0);
+        }
+      }
+    },
+    methods: {
+      init () {
+        this.curIndex = this.initIndex;
+      },
+      onSwipeLeft () {
+        if (this.curIndex == this.imgsList.length - 1) {
+          return;
+        }
+        this.isStart = true;
+        this.isAnimate = true;
+        this.curIndex = this.curIndex + 1;
+        this.styleObject.marginLeft = this.totalLength(this.curIndex) + 'rem';
+        console.log('onSwipeLeft');
+      },
+      onSwipeRight () {
+        if (this.curIndex == 0) {
+          return;
+        }
+        this.isStart = true;
+        this.isAnimate = true;
+        this.curIndex = this.curIndex - 1;
+        this.styleObject.marginLeft = this.totalLength(this.curIndex) + 'rem';
+        console.log('onSwipeRight');
+      },
+      onMoveTop (distance) {
+        this.isAnimate = false;
+        if (this.isStart) {
+          this.tempTop = this.marginTopList[this.curIndex];
+          this.isStart = false;
+        }
+        let clientHeight = document.documentElement.clientHeight;
+        let clientWidth = document.documentElement.clientWidth;
+        let unit = clientWidth / 10;
+        let bounding = document.getElementsByClassName('image-item')[this.curIndex].getBoundingClientRect();
+        let height = bounding.height;
+        let maxMargin = height - clientHeight;
+        if (height > clientHeight) {
+          let margin = this.tempTop + distance / unit;
+          if (margin >= 0 && this.phoneType) {
+            console.log(0);
+            margin = 0;
+          } else if (margin >= maxMargin / unit && !this.phoneType) {
+            console.log(1);
+            margin = maxMargin / unit;
+          }
+          if (margin < 0 - maxMargin / unit) {
+            margin = 0 - maxMargin / unit;
+          }
+          this.$set(this.marginTopList, this.curIndex, margin);
+        }
+        console.log('onMoveTop');
+      },
+      onMoveLeft (distance) {
+        this.isAnimate = false;
+        if (this.isStart) {
+          this.tempLeft = parseFloat(this.styleObject.marginLeft);
+          this.isStart = false;
+        }
+        let curLeft = parseFloat(this.styleObject.marginLeft);
+        let max = this.totalLength(this.curIndex) - (this.scaleList[this.curIndex] - 1) * 10;
+        let clientWidth = document.documentElement.clientWidth;
+        if (curLeft > max) {
+          let tempLenghth = (distance / clientWidth) * 10 + this.tempLeft;
+          if (tempLenghth <= max) {
+            this.styleObject.marginLeft = max + 'rem';
+          } else {
+            this.styleObject.marginLeft = tempLenghth + 'rem';
+          }
+          return 0;
+        } else {
+          if (this.curIndex == this.imgsList.length - 1) {
+            return;
+          }
+          this.styleObject.marginLeft = (distance / clientWidth) * 10 + this.tempLeft + 'rem';
+          return max - (distance / clientWidth) * 10 - this.tempLeft;
+        }
+      },
+      onMoveRight (distance) {
+        this.isAnimate = false;
+        if (this.isStart) {
+          this.tempLeft = parseFloat(this.styleObject.marginLeft);
+          this.isStart = false;
+        }
+        let curLeft = parseFloat(this.styleObject.marginLeft);
+        let min = this.totalLength(this.curIndex);
+        let clientWidth = document.documentElement.clientWidth;
+        if (curLeft < min) {
+          let tempLenghth = (distance / clientWidth) * 10 + this.tempLeft;
+          if (tempLenghth >= min) {
+            this.styleObject.marginLeft = min + 'rem';
+          } else {
+            this.styleObject.marginLeft = tempLenghth + 'rem';
+          }
+          return 0;
+        } else {
+          if (this.curIndex == 0) {
+            return;
+          }
+          this.styleObject.marginLeft = (distance / clientWidth) * 10 + this.tempLeft + 'rem';
+          return (distance / clientWidth) * 10 + this.tempLeft - min;
+        }
+      },
+      cancelMove (direction) {
+        this.isStart = true;
+        if (direction == 1 || direction == -1) {
+          this.isAnimate = true;
+          if (direction == 1) {
+            this.styleObject.marginLeft = this.totalLength(this.curIndex) + 'rem';
+          } else if (direction == -1) {
+            this.styleObject.marginLeft = this.totalLength(this.curIndex) - (this.scaleList[this.curIndex] - 1) * 10 + 'rem';
+          }
+        } else if (direction == 0) {
+          let max = this.totalLength(this.curIndex) - (this.scaleList[this.curIndex] - 1) * 10;
+          let min = this.totalLength(this.curIndex);
+          let curLeft = parseFloat(this.styleObject.marginLeft);
+          if (curLeft < max) {
+            this.isAnimate = true;
+            this.styleObject.marginLeft = max + 'rem';
+          }
+          if (curLeft > min) {
+            this.styleObject.marginLeft = min + 'rem';
+          }
+          // 纵向
+          let height = document.getElementsByClassName('image-item')[this.curIndex].height;
+          let clientHeight = document.documentElement.clientHeight;
+          let clientWidth = document.documentElement.clientWidth;
+          let bounding = document.getElementsByClassName('image-item')[this.curIndex].getBoundingClientRect();
+          let maxMargin = height - clientHeight;
+          let unit = clientWidth / 10;
+          this.isAnimate = true;
+          if (height <= clientHeight) {
+            this.$set(this.marginTopList, this.curIndex, 0);
+          } else {
+            if (bounding.top > 0) {
+              this.$set(this.marginTopList, this.curIndex, 0);
+            } else if (bounding.top < 0 - maxMargin) {
+              this.$set(this.marginTopList, this.curIndex, 0 - maxMargin / unit);
+            }
+          }
+        }
+      },
+      hideImgPre () {
+        this.isImageShow = false;
+      },
+      imageScale (scale, dataIndex, initCenter) {
+        dataIndex = parseInt(dataIndex);
+        if (this.isStart) {
+          if (this.scaleList[dataIndex]) {
+            this.basicScale = this.scaleList[dataIndex];
+          } else {
+            this.basicScale = 1;
+          }
+          this.tempLeft = parseFloat(this.styleObject.marginLeft);
+          this.tempTop = this.marginTopList[this.curIndex];
+          this.isStart = false;
+        }
+        let fixScale = scale * this.basicScale;
+        let naturalWidth = document.getElementsByClassName('image-item')[dataIndex].naturalWidth;
+        let basicFont = document.getElementsByTagName('html')[0].style.fontSize;
+        let maxScale = naturalWidth / (parseFloat(basicFont) * 10);
+        if (maxScale < 1) {
+          return;
+        }
+        if (fixScale < 1) {
+          fixScale = 1;
+        }
+        if (fixScale > maxScale) {
+          fixScale = maxScale;
+        }
+        let clientWidth = document.documentElement.clientWidth;
+        this.isAnimate = false;
+        this.styleObject.marginLeft = this.tempLeft - (fixScale / this.basicScale - 1) * (parseFloat(initCenter.x) / clientWidth) * 10 + 'rem';
+        this.$set(this.scaleList, dataIndex, fixScale);
+        // 竖直方向
+        let clientHeight = document.documentElement.clientHeight;
+        let bounding = document.getElementsByClassName('image-item')[dataIndex].getBoundingClientRect();
+        if (bounding.top == 0 && bounding.height > clientHeight) {
+          this.phoneType = 1;
+          this.phoneScale = this.scaleList[dataIndex];
+        }
+//        if (bounding.top <= 0) {
+//          let marginTop = this.tempTop - (fixScale / this.basicScale - 1) * (parseFloat(initCenter.y) / parseFloat(basicFont));
+//          let phoneS = this.basicScale;
+//          if (this.phoneScale > this.basicScale) {
+//            phoneS = this.phoneScale;
+//          }
+//          let marginTop = this.tempTop - (fixScale / phoneS - 1) * clientHeight / 2 / parseFloat(basicFont);
+//          console.log('marginTop:' + marginTop);
+//          this.$set(this.marginTopList, dataIndex, marginTop);
+//        }
+      },
+      totalLength (curIndex) {
+        let total = 0;
+        for (let i = 0; i < curIndex; i++) {
+          let scale = 1;
+          if (this.scaleList[i]) {
+            scale = this.scaleList[i];
+          }
+          total = total + 10 * scale + 0.2;
+        }
+        total = 0 - total;
+        return total;
+      }
+    },
+    mounted () {
+      var sl = slider.load();
+      sl.moveLeft = this.onSwipeLeft;
+      sl.moveRight = this.onSwipeRight;
+      sl.leftEffect = this.onMoveLeft;
+      sl.rightEffect = this.onMoveRight;
+      sl.cancelMove = this.cancelMove;
+      sl.imageScale = this.imageScale;
+      sl.topEffect = this.onMoveTop;
+      sl.init();
+      this.init();
+    }
+  };
+</script>
+<style lang="less">
+  @import './../assets/less/image-preview.less';
+</style>

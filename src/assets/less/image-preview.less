@@ -1,0 +1,51 @@
+.image-preview{
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top:0;
+  left:0;
+  z-index: 10;
+  background-color: rgba(0,0,0,1);
+  .items{
+    display: flex;
+    //justify-content: center;
+    align-items: center;
+    height: 100%;
+    >div{
+      position: relative;
+      margin-right: 15px;
+      &.min {
+        min-width: 750px;
+      }
+    }
+    .image-item{
+    }
+    &.animate{
+      transition: margin 0.3s ease-out;
+      -moz-transition: margin 0.3s ease-out;
+      -webkit-transition: margin 0.3s ease-out;
+      -o-transition: margin 0.3s ease-out;
+    }
+  }
+  .icons{
+    position: fixed;
+    bottom: 0;
+    height: 50px;
+    width: 100%;
+    .iconBox{
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      .circle{
+        width: 10px;
+        height: 10px;
+        margin-right: 15px;
+        border-radius: 5px;
+        background-color: rgba(255,255,255,0.5);
+        &.current{
+          background-color: rgba(255,255,255,0.9);
+        }
+      }
+    }
+  }
+}
