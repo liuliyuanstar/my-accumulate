@@ -130,7 +130,7 @@ export const slider = {
       init: function () {
         var _this = this;
         if (_this.touch) {
-          _this.slider.addEventListener('touchstart', _this.handleEvent, false);    // addEventListener第二个参数可以传一个对象，会调用该对象的handleEvent属性
+          _this.slider.addEventListener('touchstart', _this, false);    // addEventListener第二个参数可以传一个对象，会调用该对象的handleEvent属性
         }
       }
 

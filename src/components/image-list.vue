@@ -1,6 +1,5 @@
 <template>
   <div class="image-list">
-    <!--<img v-for="(src, index) in imageList" v-bind:src="src"/>-->
     <imagePreview
       v-bind:imgsList="imageList"
       ref="imagePre"

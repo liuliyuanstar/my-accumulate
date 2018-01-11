@@ -1,6 +1,6 @@
 # my-accumulate
 
-> A Vue.js project
+> 一个类似微信朋友圈照片查看缩放的Vue组件
 
 ## Build Setup
 
