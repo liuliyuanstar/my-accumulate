@@ -1,5 +1,9 @@
 <template>
-  <div class="image-preview" v-show="isImageShow" @click="hideImgPre">
+  <div class="image-preview"
+       @touchstart="handleEvent($event)"
+       @touchmove="handleEvent($event)"
+       @touchend="handleEvent($event)"
+  >
     <div class="items" v-bind:style="styleObject" v-bind:class="{animate:isAnimate}">
       <div v-for="(item, index) in imgsList" v-bind:class="{min:scaleList[index] < 1}">
         <img v-bind:class="{'image-item':true}"
@@ -17,7 +21,6 @@
   </div>
 </template>
 <script>
-  import { slider } from './../assets/js/slider.js';
   export default {
     template: '.image-preview',
     data: function () {
@@ -27,7 +30,6 @@
         },
         curIndex: 0,
         isAnimate: true,
-        isImageShow: false,
         tempLeft: 0,
         isStart: true,
         scaleList: [],
@@ -35,7 +37,15 @@
         basicScale: 1,
         tempTop: 0,
         phoneType: 0,
-        phoneScale: 1
+        phoneScale: 1,
+        startPos: 0,
+        isScrolling: 0,
+        endPos: 0,
+        initDistance: 0,  // 两指间的初始距离
+        initCenter: {x: 0, y: 0}, // 两指间的初始中点
+        direction: -2,  // -2 无方向 -1 左，0 两指， 1 右， 2 纵向
+        isLeftGoOn: 0,
+        isRightGoOn: 0
       };
     },
     props: {
@@ -54,9 +64,7 @@
       }
     },
     methods: {
-      init () {
-        this.curIndex = this.initIndex;
-      },
+      // 滑到下一张
       onSwipeLeft () {
         if (this.curIndex == this.imgsList.length - 1) {
           return;
@@ -65,8 +73,8 @@
         this.isAnimate = true;
         this.curIndex = this.curIndex + 1;
         this.styleObject.marginLeft = this.totalLength(this.curIndex) + 'rem';
-        console.log('onSwipeLeft');
       },
+      // 滑到上一张
       onSwipeRight () {
         if (this.curIndex == 0) {
           return;
@@ -75,8 +83,8 @@
         this.isAnimate = true;
         this.curIndex = this.curIndex - 1;
         this.styleObject.marginLeft = this.totalLength(this.curIndex) + 'rem';
-        console.log('onSwipeRight');
       },
+      // 上下移动
       onMoveTop (distance) {
         this.isAnimate = false;
         if (this.isStart) {
@@ -92,10 +100,8 @@
         if (height > clientHeight) {
           let margin = this.tempTop + distance / unit;
           if (margin >= 0 && this.phoneType) {
-            console.log(0);
             margin = 0;
           } else if (margin >= maxMargin / unit && !this.phoneType) {
-            console.log(1);
             margin = maxMargin / unit;
           }
           if (margin < 0 - maxMargin / unit) {
@@ -103,8 +109,8 @@
           }
           this.$set(this.marginTopList, this.curIndex, margin);
         }
-        console.log('onMoveTop');
       },
+      // 左移
       onMoveLeft (distance) {
         this.isAnimate = false;
         if (this.isStart) {
@@ -130,6 +136,7 @@
           return max - (distance / clientWidth) * 10 - this.tempLeft;
         }
       },
+      // 右移
       onMoveRight (distance) {
         this.isAnimate = false;
         if (this.isStart) {
@@ -155,6 +162,7 @@
           return (distance / clientWidth) * 10 + this.tempLeft - min;
         }
       },
+      // 恢复到原状态
       cancelMove (direction) {
         this.isStart = true;
         if (direction == 1 || direction == -1) {
@@ -194,9 +202,7 @@
           }
         }
       },
-      hideImgPre () {
-        this.isImageShow = false;
-      },
+      // 图片缩放
       imageScale (scale, dataIndex, initCenter) {
         dataIndex = parseInt(dataIndex);
         if (this.isStart) {
@@ -244,6 +250,7 @@
 //          this.$set(this.marginTopList, dataIndex, marginTop);
 //        }
       },
+      // 获取图片框的总长度
       totalLength (curIndex) {
         let total = 0;
         for (let i = 0; i < curIndex; i++) {
@@ -255,19 +262,107 @@
         }
         total = 0 - total;
         return total;
+      },
+      // 根据事件类型绑定事件
+      handleEvent (event) {
+        if (event.type === 'touchstart') {
+          this.start(event);
+        } else if (event.type === 'touchmove') {
+          this.move(event);
+        } else if (event.type === 'touchend') {
+          this.end(event);
+        }
+      },
+      // 滑动开始
+      start (event) {
+        if (event.targetTouches.length == 1) {
+          let touch = event.targetTouches[0];     // touches数组对象获得屏幕上所有的touch，取第一个touch
+          this.startPos = {x: touch.pageX, y: touch.pageY, time: +new Date()};    // 取第一个touch的坐标值
+          this.isScrolling = 0;   // 这个参数判断是垂直滚动还是水平滚动
+        } else if (event.targetTouches.length == 2) {
+          this.direction = 0;
+          this.initDistance = this.getDistance(event);
+          this.initCenter = this.getCenter(event);
+        }
+      },
+      // 移动
+      move (event) {
+        // 判断默认行为是否可以被禁用
+        if (event.cancelable) {
+          // 判断默认行为是否已经被禁用
+          if (!event.defaultPrevented) {
+            event.preventDefault();
+          }
+        }
+        if (event.targetTouches.length > 2 && !event.target.className.contents('image-item')) {
+          return;
+        }
+        if (event.targetTouches.length == 2) {
+          let distance = this.getDistance(event);
+          let scale = distance / this.initDistance;
+          let dataIndex = event.target.title;
+          this.imageScale(scale, dataIndex, this.initCenter);
+        } else if (event.targetTouches.length == 1) {
+          let touch = event.targetTouches[0];
+          this.endPos = {x: touch.pageX - this.startPos.x, y: touch.pageY - this.startPos.y};
+          this.isScrolling = Math.abs(this.endPos.x) < Math.abs(this.endPos.y) ? 1 : 0;    // isScrolling为1时，表示纵向滑动，0为横向滑动
+          if (this.isScrolling === 0) {
+            if (this.endPos.x > 0) {
+              this.isRightGoOn = this.onMoveRight(this.endPos.x);
+              this.direction = 1;
+              if (!this.isRightGoOn) {
+                this.direction = -2;
+              }
+            } else if (this.endPos.x < 0) {
+              this.isLeftGoOn = this.onMoveLeft(this.endPos.x);
+              this.direction = -1;
+              if (!this.isLeftGoOn) {
+                this.direction = -2;
+              }
+            }
+          } else {
+            this.direction = 2;
+            this.onMoveTop(this.endPos.y);
+          }
+        }
+      },
+      // 滑动释放
+      end () {
+        //   let duration = +new Date() - this.startPos.time;    // 滑动的持续时间
+        if ((this.direction == 1 || this.direction == -1) && this.isScrolling === 0) {    // 当为水平滚动时
+          if (this.endPos.x > 0 && this.isRightGoOn > 5) {
+            this.onSwipeRight();
+          } else if (this.endPos.x < 0 && this.isLeftGoOn > 5) {
+            this.onSwipeLeft();
+          } else if (this.isRightGoOn > 0 || this.isLeftGoOn > 0) {
+            this.cancelMove(this.direction);
+          }
+        } else {
+          this.cancelMove(this.direction);
+        }
+      },
+      // 获取两根手指的滑动距离
+      getDistance (ev) {
+        let x1 = ev.targetTouches[0].pageX;
+        let y1 = ev.targetTouches[0].pageY;
+        let x2 = ev.targetTouches[1].pageX;
+        let y2 = ev.targetTouches[1].pageY;
+        let a = x1 - x2;
+        let b = y1 - y2;
+        return Math.sqrt(a * a + b * b);  // 已知两个直角边开平方得出 斜角边
+      },
+      // 获取两根手指的中点坐标
+      getCenter: function (ev) {
+        var x1 = ev.targetTouches[0].pageX;
+        var y1 = ev.targetTouches[0].pageY;
+        var x2 = ev.targetTouches[1].pageX;
+        var y2 = ev.targetTouches[1].pageY;
+        var a = (x1 + x2) / 2;
+        var b = (y1 + y2) / 2;
+        return {x: a, y: b};
       }
     },
     mounted () {
-      var sl = slider.load();
-      sl.moveLeft = this.onSwipeLeft;
-      sl.moveRight = this.onSwipeRight;
-      sl.leftEffect = this.onMoveLeft;
-      sl.rightEffect = this.onMoveRight;
-      sl.cancelMove = this.cancelMove;
-      sl.imageScale = this.imageScale;
-      sl.topEffect = this.onMoveTop;
-      sl.init();
-      this.init();
     }
   };
 </script>
